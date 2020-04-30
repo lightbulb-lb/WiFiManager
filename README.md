@@ -42,7 +42,7 @@ First attempt at a library. Lots more changes and fixes to do. Contributions are
 - ESP will try to connect. If successful, it relinquishes control back to your app. If not, reconnect to AP and reconfigure.
 
 ## How It Looks
-![ESP8266 WiFi Captive Portal Homepage](http://i.imgur.com/YPvW9eql.png) ![ESP8266 WiFi Captive Portal Configuration](http://i.imgur.com/oicWJ4gl.png)
+![ESP8266 WiFi Captive Portal Homepage](https://github.com/lightbulb-lb/WiFiManager/blob/master/Images/Image.png) ![ESP8266 WiFi Captive Portal Configuration](https://github.com/lightbulb-lb/WiFiManager/blob/master/Images/MQTT.png)
 
 ## Wishlist
 - [x] remove dependency on EEPROM library
