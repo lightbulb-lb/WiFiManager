@@ -6,7 +6,8 @@
    http://www.esp8266.com/viewtopic.php?f=29&t=2520
    https://github.com/chriscook8/esp-arduino-apboot
    https://github.com/esp8266/Arduino/tree/master/libraries/DNSServer/examples/CaptivePortalAdvanced
-   Built by AlexT https://github.com/tzapu
+   https://github.com/tzapu
+   Built by LightBulb - https://github.com/lightbulb-lb/WiFiManager
    Licensed under MIT license
  **************************************************************/
 
@@ -25,14 +26,17 @@ extern "C" {
 const char HTTP_HEADER[] PROGMEM          = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\"/><title>{v}</title>";
 const char HTTP_STYLE[] PROGMEM           = "<style>.c{text-align: center;} div,input{padding:5px;font-size:1em;} input{width:95%;} body{text-align: center;font-family:verdana;} button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;} .q{float: right;width: 64px;text-align: right;} .l{background: url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAALVBMVEX///8EBwfBwsLw8PAzNjaCg4NTVVUjJiZDRUUUFxdiZGSho6OSk5Pg4eFydHTCjaf3AAAAZElEQVQ4je2NSw7AIAhEBamKn97/uMXEGBvozkWb9C2Zx4xzWykBhFAeYp9gkLyZE0zIMno9n4g19hmdY39scwqVkOXaxph0ZCXQcqxSpgQpONa59wkRDOL93eAXvimwlbPbwwVAegLS1HGfZAAAAABJRU5ErkJggg==\") no-repeat left center;background-size: 1em;} #logo{width:100px;height:100px;no-repeat left center;background-size: 1em} </style>";
 const char HTTP_SCRIPT[] PROGMEM          = "<script>function c(l){document.getElementById('s').value=l.innerText||l.textContent;document.getElementById('p').focus();}</script>";
-const char HTTP_HEADER_END[] PROGMEM        = "</head><body><div style='text-align:left;display:inline-block;min-width:260px;'>";
-const char HTTP_PORTAL_OPTIONS[] PROGMEM  = "<form action=\"/wifi\" method=\"get\"><button>Configure WiFi</button></form><br/><form action=\"/0wifi\" method=\"get\"><button>Configure WiFi (No Scan)</button></form><br/><form action=\"/i\" method=\"get\"><button>Info</button></form><br/><form action=\"/r\" method=\"post\"><button>Reset</button></form>";
+const char HTTP_HEADER_END[] PROGMEM      = "</head><body><div style='text-align:left;display:inline-block;min-width:260px;'>";
+const char HTTP_PORTAL_OPTIONS[] PROGMEM  = "<form action=\"/wifi\" method=\"get\"><button>Configure WiFi</button></form><br/><form action=\"/0wifi\" method=\"get\"><button>Configure WiFi (No Scan)</button></form><br/><form action=\"/i\" method=\"get\"><button>Info</button></form><br/><form action=\"/r\" method=\"post\"><button>Reset</button></form><br/><form action=\"/new\" method=\"get\"><button>Direct Login</button></form>";  //Added line here by Light Bulb
 const char HTTP_ITEM[] PROGMEM            = "<div><a href='#p' onclick='c(this)'>{v}</a>&nbsp;<span class='q {i}'>{r}%</span></div>";
 const char HTTP_FORM_START[] PROGMEM      = "<form method='get' action='wifisave'><input id='s' name='s' length=32 placeholder='SSID'><br/><input id='p' name='p' length=64 type='password' placeholder='password'><br/>";
+const char HTTP_PAGE_START[] PROGMEM      = "<div>Enter Password Here!</div><br /><form method='get' action='pass'><input id='pass' name='pass' length=64 type='password' placeholder='password'><br />";                 //Line added by lightbulb
 const char HTTP_FORM_PARAM[] PROGMEM      = "<br/><input id='{i}' name='{n}' maxlength={l} placeholder='{p}' value='{v}' {c}>";
-const char HTTP_FORM_END[] PROGMEM        = "<br/><button type='submit'>save</button></form>";
+const char HTTP_FORM_END[] PROGMEM        = "<br/><button type='submit'>Submit</button></form>";
+//const char HTTP_PAGE_END[] PROGMEM        = "<br/><button type='submit'>save</button></form>";            //Line added by Lightbulb
 const char HTTP_SCAN_LINK[] PROGMEM       = "<br/><div class=\"c\"><a href=\"/wifi\">Scan</a></div>";
 const char HTTP_SAVED[] PROGMEM           = "<div>Credentials Saved<br />Trying to connect ESP to network.<br />If it fails reconnect to AP to try again</div>";
+const char HTTP_SAVED_PAGE[] PROGMEM      = "<div>Credentials Saved<br />Stay on same network.<br />";
 const char HTTP_END[] PROGMEM             = "</div></body></html>";
 #include "image.h"
 
@@ -135,9 +139,12 @@ class WiFiManager
     const char*   _apPassword             = NULL;
     String        _ssid                   = "";
     String        _pass                   = "";
+    String        _matchpass              = "PASSWORD";     //Added by Light Bulb
+    String        pass                    = "";
     unsigned long _configPortalTimeout    = 0;
     unsigned long _connectTimeout         = 0;
     unsigned long _configPortalStart      = 0;
+    char          _value[6];
 
     IPAddress     _ap_static_ip;
     IPAddress     _ap_static_gw;
@@ -169,6 +176,8 @@ class WiFiManager
     void          handleReset();
     void          handleNotFound();
     void          handle204();
+    void          handleNewPage();    //This line been added by Lightbulb
+    void          handlePassSave();
     boolean       captivePortal();
     boolean       configPortalHasTimeout();
 
@@ -181,6 +190,7 @@ class WiFiManager
     String        toStringIp(IPAddress ip);
 
     boolean       connect;
+    boolean       something = false;            //Added by Lightbulb
     boolean       _debug = true;
 
     void (*_apcallback)(WiFiManager*) = NULL;

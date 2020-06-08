@@ -144,12 +144,14 @@ void WiFiManager::setupConfigPortal() {
 
   /* Setup web pages: root, wifi config pages, SO captive portal detectors and not found. */
   server->on(String(F("/")).c_str(), std::bind(&WiFiManager::handleRoot, this));
-  server->on(String(F("/logo.jpg")).c_str(), std::bind(&WiFiManager::handleLogo, this));  //This part been added by lightBulb
+  server->on(String(F("/logo.jpg")).c_str(), std::bind(&WiFiManager::handleLogo, this));  		 //This part been added by lightBulb
   server->on(String(F("/wifi")).c_str(), std::bind(&WiFiManager::handleWifi, this, true));
   server->on(String(F("/0wifi")).c_str(), std::bind(&WiFiManager::handleWifi, this, false));
   server->on(String(F("/wifisave")).c_str(), std::bind(&WiFiManager::handleWifiSave, this));
   server->on(String(F("/i")).c_str(), std::bind(&WiFiManager::handleInfo, this));
   server->on(String(F("/r")).c_str(), std::bind(&WiFiManager::handleReset, this));
+  server->on(String(F("/new")).c_str(), std::bind(&WiFiManager::handleNewPage, this));  		 //This part been added by lightbulb
+  server->on(String(F("/pass")).c_str(), std::bind(&WiFiManager::handlePassSave, this));	 //This part been added by Lightbulb
   //server->on("/generate_204", std::bind(&WiFiManager::handle204, this));  //Android/Chrome OS captive portal check.
   server->on(String(F("/fwlink")).c_str(), std::bind(&WiFiManager::handleRoot, this));  //Microsoft captive portal. Maybe not needed. Might be handled by notFound handler.
   server->onNotFound (std::bind(&WiFiManager::handleNotFound, this));
@@ -177,6 +179,17 @@ boolean WiFiManager::autoConnect(char const *apName, char const *apPassword) {
     DEBUG_WM(F("IP Address:"));
     DEBUG_WM(WiFi.localIP());
     //connected
+    return true;
+  }
+  //ADD the code here for AP mode setup  --Added By Lightbulb
+  if ( something ) {
+    //Not_Connected 
+    something = false;
+    WiFi.persistent(false);
+    WiFi.mode(WIFI_AP);
+    WiFi.persistent(true);
+    DEBUG_WM(F("AP Started"));
+    DEBUG_WM(WiFi.softAPIP());
     return true;
   }
 
@@ -220,7 +233,7 @@ boolean  WiFiManager::startConfigPortal(char const *apName, char const *apPasswo
     _apcallback(this);
   }
 
-  connect = false;
+  connect = false; something = false;	 //Added by Light Bulb
   setupConfigPortal();
 
   while(1){
@@ -235,7 +248,7 @@ boolean  WiFiManager::startConfigPortal(char const *apName, char const *apPasswo
 
     if (connect) {
       delay(1000);
-      connect = false;
+      //connect = false;
 
       // if saving with no ssid filled in, reconnect to ssid
       // will not exit cp 
@@ -281,14 +294,23 @@ boolean  WiFiManager::startConfigPortal(char const *apName, char const *apPasswo
         delay(1000);
         break;
       }
+      yield();
     }
-    yield();
+    if ( something ){     //Added by Light Bulb
+      break;
+      yield();
+    }
   }
-
   server.reset();
   dnsServer.reset();
-
-  return  WiFi.status() == WL_CONNECTED;
+  //Followed Lines --Added by LightBulb
+  if ( connect ) {
+    connect = false;
+    return WiFi.status() == WL_CONNECTED;
+  }
+  if( something ) {
+    return something;
+  }
 }
 
 
@@ -687,7 +709,7 @@ void WiFiManager::handleWifiSave() {
 
   DEBUG_WM(F("Sent wifi save page"));
 
-  connect = true; //signal ready to connect/reset
+  connect = true; something = false;//signal ready to connect/reset
 }
 
 /** Handle the info page */
@@ -788,6 +810,61 @@ boolean WiFiManager::captivePortal() {
   }
   return false;
 }
+
+//ADD BOTH PAGES HERE 
+//For New Page -- Added by Light Bulb
+void WiFiManager::handleNewPage() {
+	DEBUG_WM(F("New Page for Direct Login"));
+	DEBUG_WM(F("Enter Password here"));
+
+	String page = FPSTR(HTTP_HEADER);
+  page.replace("{v}", "Config DirectLoginPage");
+  page += FPSTR(HTTP_SCRIPT);
+  page += FPSTR(HTTP_STYLE);
+  page += _customHeadElement;
+  page += FPSTR(HTTP_HEADER_END);
+
+  page += FPSTR(HTTP_PAGE_START);
+  page += "<br/>";
+	page += FPSTR(HTTP_FORM_END);
+
+  page += FPSTR(HTTP_END);
+
+  server->sendHeader("Content-Length", String(page.length()));
+  server->send(200, "text/html", page);
+
+  DEBUG_WM(F("Direct Login Page Loaded"));
+}
+//For Saving Password -- Added by Light Bulb
+void WiFiManager::handlePassSave() {
+	String value = server->arg("pass").c_str();
+	pass = value;
+	//value.toCharArray(pass).c_str();
+	DEBUG_WM(F("Entered Password"));
+	DEBUG_WM(value);
+
+	String page = FPSTR(HTTP_HEADER);
+	page.replace("{v}", "Credentials Saved");
+	page += FPSTR(HTTP_SCRIPT);
+	page += FPSTR(HTTP_STYLE);
+	page += _customHeadElement;
+	page += FPSTR(HTTP_HEADER_END);
+	page += FPSTR(HTTP_SAVED_PAGE);
+	page += FPSTR(HTTP_END);
+
+  server->sendHeader("Content-Length", String(page.length()));
+  server->send(200, "text/html", page);
+  DEBUG_WM(F("Password saved"));
+	DEBUG_WM(F("Sent password page"));
+
+  if ( _matchpass == pass ) {
+	   something = true; connect = false;
+  }
+  else {
+    something = false;
+  }
+}
+
 
 //start up config portal callback
 void WiFiManager::setAPCallback( void (*func)(WiFiManager* myWiFiManager) ) {
